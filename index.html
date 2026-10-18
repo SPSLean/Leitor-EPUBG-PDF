@@ -4,6 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Leitor de Livros</title>
+<!-- NOVO: instalar como app (PWA). Caminhos relativos, para funcionar em usuario.github.io/repositorio/ -->
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="theme-color" content="#121212">
+<link rel="icon" type="image/png" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Leitor">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <style>
 :root{--bg:#121212;--fg:#c9c4b8;--ui:#1d1d1d;--mut:#8a867d;--ln:#333;--dim:0;--warm:0;box-sizing:border-box}
 [data-theme=amoled]{--bg:#000;--fg:#a8a8a8;--ui:#0c0c0c;--mut:#6c6c6c;--ln:#222}
@@ -107,6 +116,8 @@ input[type=file]{display:none}
   <input class="helium-url" id="bookUrl" type="text" inputmode="url"
          autocapitalize="none" autocomplete="off" spellcheck="false"
          placeholder="ou cole o link de um PDF ou EPUB" data-helium-url>
+  <!-- NOVO: aparece só quando o navegador permite instalar o app -->
+  <button class="btn" id="bInstall" style="display:none">Instalar como app</button>
   <p style="font-size:12px">O arquivo fica guardado só no seu aparelho, e o livro abre de onde você parou. Funciona com PDFs que tenham texto (não escaneados).</p>
 </section>
 
@@ -539,6 +550,31 @@ async function showLib(){
       load.style.display = 'none';
     }
   });
+})();
+</script>
+
+<script>
+/* ===== NOVO: PWA (instalar como app e abrir offline) ===== */
+(function () {
+  // Registra o service worker (precisa de https; GitHub Pages já é https)
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  }
+  // Botão "Instalar como app" (Chrome/Edge/Android)
+  var prompt = null, btn = document.getElementById('bInstall');
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    prompt = e;
+    btn.style.display = 'inline-block';
+  });
+  btn.addEventListener('click', async function () {
+    if (!prompt) return;
+    prompt.prompt();
+    try { await prompt.userChoice; } catch (err) {}
+    prompt = null;
+    btn.style.display = 'none';
+  });
+  window.addEventListener('appinstalled', function () { btn.style.display = 'none'; });
 })();
 </script>
 </body>
