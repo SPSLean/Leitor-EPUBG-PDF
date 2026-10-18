@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Leitor de Livros</title>
+<style>
+:root{--bg:#121212;--fg:#c9c4b8;--ui:#1d1d1d;--mut:#8a867d;--ln:#333;--dim:0;--warm:0;box-sizing:border-box}
+[data-theme=amoled]{--bg:#000;--fg:#a8a8a8;--ui:#0c0c0c;--mut:#6c6c6c;--ln:#222}
+[data-theme=sepia]{--bg:#efe0c0;--fg:#4a3a24;--ui:#e3d1aa;--mut:#7d6a4c;--ln:#cdb98f}
+[data-theme=amber]{--bg:#1a1006;--fg:#d9a35a;--ui:#25170a;--mut:#9a7340;--ln:#3b2812}
+[data-theme=gray]{--bg:#2b2f33;--fg:#cfd3d6;--ui:#363b40;--mut:#98a0a6;--ln:#454b51}
+[data-theme=light]{--bg:#f6f6f2;--fg:#222;--ui:#e9e9e3;--mut:#666;--ln:#d0d0c8}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;-webkit-text-size-adjust:100%}
+button,select,input{font:inherit;color:inherit}
+#bar,#foot{position:fixed;left:0;right:0;z-index:20;background:var(--ui);transition:transform .25s;display:flex;align-items:center;gap:8px;padding:8px 12px}
+#bar{top:0;padding-top:calc(8px + env(safe-area-inset-top,0px));border-bottom:1px solid var(--ln)}
+#foot{bottom:0;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--ln)}
+.hide #bar{transform:translateY(-100%)}.hide #foot{transform:translateY(100%)}
+.btn{background:transparent;border:1px solid var(--ln);border-radius:10px;padding:8px 14px;cursor:pointer}
+.btn:active{background:var(--ln)}
+#ttl{flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;color:var(--mut);font-size:14px;text-align:center}
+#text{max-width:760px;margin:0 auto;padding-top:calc(72px + env(safe-area-inset-top,0px));padding-bottom:calc(90px + env(safe-area-inset-bottom,0px));overflow-wrap:break-word;hyphens:auto}
+#text p{margin:0 0 .9em}
+#text h2{font-size:1.35em;line-height:1.3;margin:1.6em 0 .7em;text-align:left}
+#welcome{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center}
+#welcome h1{margin:0;font-size:26px}
+#welcome p{margin:0;color:var(--mut);max-width:340px;line-height:1.5}
+#drop{border:2px dashed var(--ln);border-radius:16px;padding:28px 20px;max-width:360px;width:100%}
+#drop.on{border-color:var(--fg)}
+.big{background:var(--fg);color:var(--bg);border:0;border-radius:12px;padding:14px 26px;font-weight:600;cursor:pointer;font-size:16px}
+input[type=file]{display:none}
+#prog{flex:1;accent-color:var(--fg)}
+#pct{min-width:92px;text-align:right;font-size:12px;color:var(--mut);line-height:1.25;white-space:pre}
+#lib{width:100%;max-width:360px;text-align:left}
+.lh{font-size:13px;color:var(--mut);margin:0 0 8px}
+.card{display:flex;align-items:stretch;border:1px solid var(--ln);border-radius:12px;margin-bottom:8px;background:var(--ui);overflow:hidden}
+.ct{flex:1;background:none;border:0;text-align:left;padding:12px 14px;cursor:pointer;min-width:0}
+.ct b{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin-bottom:4px}
+.ct span{font-size:12px;color:var(--mut)}
+.pb{height:3px;background:var(--ln);margin-top:8px;border-radius:2px}
+.pb i{display:block;height:100%;background:var(--fg);border-radius:2px}
+.x{background:none;border:0;border-left:1px solid var(--ln);padding:0 14px;cursor:pointer;color:var(--mut);font-size:12px}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--ui);border-radius:18px 18px 0 0;border-top:1px solid var(--ln);max-height:78vh;overflow-y:auto;padding:16px 18px calc(18px + env(safe-area-inset-bottom,0px));transform:translateY(105%);transition:transform .25s;max-width:640px;margin:0 auto}
+.sheet.open{transform:none}
+#back{position:fixed;inset:0;z-index:25;display:none;background:rgba(0,0,0,.35)}
+#back.on{display:block}
+.row{display:flex;align-items:center;gap:12px;margin:14px 0}
+.row label{width:110px;font-size:14px;color:var(--mut);flex-shrink:0}
+.row input[type=range]{flex:1;accent-color:var(--fg)}
+.row select{flex:1;background:var(--bg);border:1px solid var(--ln);border-radius:8px;padding:8px}
+#themes{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.th{border:2px solid var(--ln);border-radius:10px;padding:12px 6px;text-align:center;font-size:13px;cursor:pointer}
+.th.sel{border-color:var(--fg)}
+#toc button{display:block;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--ln);padding:12px 4px;cursor:pointer;line-height:1.3}
+#toc .e{color:var(--mut);padding:12px 4px}
+#dim,#warm{position:fixed;inset:0;pointer-events:none;z-index:99}
+#dim{background:#000;opacity:var(--dim)}
+#warm{background:#ff9a3c;mix-blend-mode:multiply;opacity:var(--warm)}
+#load{position:fixed;inset:0;z-index:40;background:var(--bg);display:none;align-items:center;justify-content:center;text-align:center;padding:20px}
+
+/* ===== NOVO: campo de URL estilo Helium (usa as cores do tema atual) ===== */
+.helium-url{
+  width:100%;max-width:360px;
+  padding:11px 16px;
+  border:1px solid var(--ln);
+  border-radius:999px;
+  background:var(--ui);
+  color:var(--fg);
+  font:inherit;
+  text-align:center;              /* sem foco: centralizado */
+  text-overflow:ellipsis;         /* URL longa vira "…" */
+  white-space:nowrap;
+  overflow:hidden;
+  outline:none;
+  transition:background .2s ease,border-color .2s ease,box-shadow .2s ease;
+}
+.helium-url::placeholder{color:var(--mut)}
+.helium-url:focus{
+  text-align:left;                /* com foco: alinhado à esquerda */
+  border-color:var(--fg);
+  box-shadow:0 0 0 3px rgba(128,128,128,.25);
+}
+/* text-align não é animável em CSS, então o texto faz um fade rápido na troca */
+.helium-url.swap{animation:heliumSwap .18s ease}
+@keyframes heliumSwap{from{color:transparent}}
+</style>
+</head>
+<body class="hide">
+<div id="dim"></div><div id="warm"></div>
+
+<header id="bar">
+  <button class="btn" id="bOpen">Livros</button>
+  <div id="ttl"></div>
+  <button class="btn" id="bToc">Índice</button>
+  <button class="btn" id="bSet">Aa</button>
+</header>
+
+<section id="welcome">
+  <h1>📖 Leitor de Livros</h1>
+  <p>Abra um PDF ou EPUB e leia com texto que se adapta ao celular, sem luz branca.</p>
+  <div id="lib"></div>
+  <div id="drop"><button class="big" id="bPick">Escolher livro</button><p style="margin-top:12px;font-size:13px">ou arraste o arquivo aqui</p></div>
+  <!-- NOVO: campo de URL estilo Helium. A URL completa fica em data-full-url -->
+  <input class="helium-url" id="bookUrl" type="text" inputmode="url"
+         autocapitalize="none" autocomplete="off" spellcheck="false"
+         placeholder="ou cole o link de um PDF ou EPUB" data-helium-url>
+  <p style="font-size:12px">O arquivo fica guardado só no seu aparelho, e o livro abre de onde você parou. Funciona com PDFs que tenham texto (não escaneados).</p>
+</section>
+
+<article id="text"></article>
+
+<footer id="foot"><input type="range" id="prog" min="0" max="1000" value="0"><span id="pct">0%</span></footer>
+
+<div id="load"><div id="loadMsg">Carregando…</div></div>
+<div id="back"></div>
+
+<aside class="sheet" id="sSet">
+  <div id="themes"></div>
+  <div class="row"><label>Tamanho</label><input type="range" data-k="size" min="14" max="38" step="1"></div>
+  <div class="row"><label>Entrelinhas</label><input type="range" data-k="lh" min="1.3" max="2.3" step="0.05"></div>
+  <div class="row"><label>Margens</label><input type="range" data-k="mar" min="6" max="60" step="2"></div>
+  <div class="row"><label>Brilho</label><input type="range" data-k="dim" min="0" max="80" step="1"></div>
+  <div class="row"><label>Luz quente</label><input type="range" data-k="warm" min="0" max="70" step="1"></div>
+  <div class="row"><label>Fonte</label><select data-k="font"><option value="serif">Serifada</option><option value="sans">Sem serifa</option><option value="verdana">Verdana (legível)</option></select></div>
+  <div class="row"><label>Alinhamento</label><select data-k="align"><option value="left">Esquerda</option><option value="justify">Justificado</option></select></div>
+</aside>
+
+<aside class="sheet" id="sToc"><div id="toc"></div></aside>
+
+<input type="file" id="file" accept=".pdf,.epub,application/pdf,application/epub+zip">
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+const $=i=>document.getElementById(i);
+const FONTS={serif:"Georgia,'Iowan Old Style','Times New Roman',serif",sans:"system-ui,-apple-system,'Segoe UI',Roboto,sans-serif",verdana:"Verdana,Geneva,sans-serif"};
+const THEMES={night:['Noite','#121212','#c9c4b8'],amoled:['Preto total','#000','#a8a8a8'],amber:['Âmbar','#1a1006','#d9a35a'],gray:['Cinza suave','#2b2f33','#cfd3d6'],sepia:['Sépia','#efe0c0','#4a3a24'],light:['Claro','#f6f6f2','#222']};
+const D={theme:'night',size:20,lh:1.7,mar:20,font:'serif',align:'left',dim:0,warm:0};
+let S={...D},book=null,tm;
+try{S={...D,...JSON.parse(localStorage.getItem('lv:cfg')||'{}')}}catch(e){}
+const sv=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}};
+function prep(r){let c=0;r.blocks.forEach(b=>{b.c=c;c+=b.s.length});r.total=c}
+
+function apply(){
+  const r=document.documentElement,t=$('text');
+  r.dataset.theme=S.theme;
+  t.style.fontSize=S.size+'px';t.style.lineHeight=S.lh;
+  t.style.paddingLeft=t.style.paddingRight=S.mar+'px';
+  t.style.textAlign=S.align;t.style.fontFamily=FONTS[S.font];
+  r.style.setProperty('--dim',S.dim/100);r.style.setProperty('--warm',S.warm/100);
+  document.querySelectorAll('.th').forEach(b=>b.classList.toggle('sel',b.dataset.t===S.theme));
+  sv('lv:cfg',S);
+}
+function anchor(){
+  const c=$('text').children;if(!c.length)return 0;
+  let lo=0,hi=c.length-1;
+  while(lo<hi){const m=(lo+hi+1)>>1;if(c[m].getBoundingClientRect().top+scrollY<=scrollY+70)lo=m;else hi=m-1}
+  return lo;
+}
+function go(i){const e=$('text').children[i];if(e)scrollTo(0,e.getBoundingClientRect().top+scrollY-70)}
+
+// Configurações
+for(const k in THEMES){
+  const b=document.createElement('div');b.className='th';b.dataset.t=k;b.textContent=THEMES[k][0];
+  b.style.background=THEMES[k][1];b.style.color=THEMES[k][2];
+  b.onclick=()=>{S.theme=k;apply()};$('themes').appendChild(b);
+}
+document.querySelectorAll('[data-k]').forEach(el=>{
+  el.value=S[el.dataset.k];
+  el.oninput=()=>{
+    const k=el.dataset.k,a=book?anchor():0;
+    S[k]=el.type==='range'?+el.value:el.value;apply();if(book)go(a);
+  };
+});
+apply();
+
+// Painéis
+const sheets=['sSet','sToc'];
+function openSheet(id){sheets.forEach(s=>$(s).classList.toggle('open',s===id));$('back').classList.add('on')}
+function closeSheets(){sheets.forEach(s=>$(s).classList.remove('open'));$('back').classList.remove('on')}
+$('back').onclick=closeSheets;
+$('bSet').onclick=()=>openSheet('sSet');
+$('bToc').onclick=()=>openSheet('sToc');
+$('text').onclick=()=>{if(String(getSelection()))return;document.body.classList.toggle('hide')};
+
+// Abrir arquivo
+const pick=()=>$('file').click();
+$('bOpen').onclick=showLib;$('bPick').onclick=pick;
+$('file').onchange=e=>{if(e.target.files[0])openFile(e.target.files[0]);e.target.value=''};
+const dz=$('drop');
+['dragover','dragenter'].forEach(n=>addEventListener(n,e=>{e.preventDefault();dz.classList.add('on')}));
+['dragleave','drop'].forEach(n=>addEventListener(n,e=>{e.preventDefault();dz.classList.remove('on')}));
+addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)openFile(f)});
+
+const msg=t=>{$('loadMsg').textContent=t};
+async function openFile(f){
+  $('load').style.display='flex';msg('Abrindo…');
+  try{
+    const buf=await f.arrayBuffer();
+    const epub=/\.epub$/i.test(f.name);
+    const r=epub?await parseEPUB(buf):await parsePDF(buf);
+    if(!r.blocks.length)throw new Error('Não encontrei texto neste arquivo (PDFs escaneados não funcionam).');
+    r.id=f.name+'|'+f.size;r.title=r.title||f.name.replace(/\.(pdf|epub)$/i,'');
+    prep(r);
+    const m=await dbGet('meta',r.id);
+    await dbPut('data',{id:r.id,blocks:r.blocks});
+    book=r;render(m?m.pos:0);saveMeta();
+  }catch(e){msg('Não consegui abrir: '+(e.message||e));await new Promise(r=>setTimeout(r,3500))}
+  $('load').style.display='none';
+}
+
+function render(startPos){
+  const t=$('text');t.textContent='';
+  const fr=document.createDocumentFragment(),toc=$('toc');toc.textContent='';
+  book.blocks.forEach((b,i)=>{
+    const e=document.createElement(b.t==='h'?'h2':'p');e.textContent=b.s;fr.appendChild(e);
+    if(b.t==='h'){const x=document.createElement('button');x.textContent=b.s;x.onclick=()=>{closeSheets();go(i)};toc.appendChild(x)}
+  });
+  if(!toc.children.length){const d=document.createElement('div');d.className='e';d.textContent='Nenhum capítulo detectado. Use a barra de progresso embaixo.';toc.appendChild(d)}
+  t.appendChild(fr);
+  $('welcome').style.display='none';$('ttl').textContent=book.title;
+  document.title=book.title;
+  document.body.classList.add('hide');
+  t.style.display='block';reading=false;cur={i:startPos||0,p:0};
+  scrollTo(0,0);setTimeout(()=>{go(startPos||0);reading=true;upd()},60);
+}
+
+// Progresso
+let reading=false,cur={i:0,p:0};
+const totPg=()=>book.pages||Math.max(1,Math.ceil(book.total/1800));
+function pageOf(i){
+  const b=book.blocks[i]||{};
+  return Math.min(totPg(),book.pages?(b.pg||1):Math.floor((b.c||0)/1800)+1);
+}
+function saveMeta(){
+  if(!book)return;
+  dbPut('meta',{id:book.id,title:book.title,pages:book.pages||0,total:book.total,pos:cur.i,pct:cur.p,pg:pageOf(cur.i),tot:totPg(),est:!book.pages,upd:Date.now()});
+}
+function upd(){
+  if(!book||!reading)return;
+  const m=document.documentElement.scrollHeight-innerHeight,p=m>0?Math.min(1,scrollY/m):0;
+  const i=anchor(),e=book.pages?'':'~';
+  cur={i,p};
+  $('prog').value=p*1000;
+  $('pct').textContent='pág. '+e+pageOf(i)+' de '+e+totPg()+'\n'+Math.round(p*100)+'%';
+  clearTimeout(tm);tm=setTimeout(saveMeta,400);
+}
+addEventListener('scroll',upd,{passive:true});
+addEventListener('pagehide',()=>{clearTimeout(tm);saveMeta()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(tm);saveMeta()}});
+$('prog').oninput=e=>{const m=document.documentElement.scrollHeight-innerHeight;scrollTo(0,e.target.value/1000*m)};
+
+// PDF → blocos de texto
+async function parsePDF(buf){
+  const pdf=await pdfjsLib.getDocument({data:new Uint8Array(buf)}).promise;
+  const pages=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    msg('Lendo página '+p+' de '+pdf.numPages);
+    const tc=await(await pdf.getPage(p)).getTextContent();
+    const lines=[];let cur=null;
+    for(const it of tc.items){
+      if(!it.str)continue;
+      const y=it.transform[5],h=Math.abs(it.transform[3])||it.height||10,x=it.transform[4];
+      if(cur&&Math.abs(y-cur.y)<h*.5){cur.s+=it.str;cur.h=Math.max(cur.h,h)}
+      else{cur={y,h,x,s:it.str};lines.push(cur)}
+    }
+    pages.push(lines.filter(l=>l.s.trim()));
+  }
+  const hs=pages.flat().map(l=>l.h).sort((a,b)=>a-b),med=hs[hs.length>>1]||10;
+  const blocks=[],end=/[.!?…”"»)]$/;
+  let para='',prev=null,head=false,pg=1,ppg=1;
+  const flush=()=>{if(para.trim())blocks.push({t:'p',s:para.trim(),pg:ppg});para=''};
+  for(const [pi,ls] of pages.entries()){
+    pg=pi+1;
+    if(!ls.length)continue;
+    const minX=Math.min(...ls.map(l=>l.x));prev=null;
+    ls.forEach((l,i)=>{
+      const s=l.s.replace(/\s+/g,' ').trim();
+      if(/^\d{1,4}$/.test(s)&&(i===0||i===ls.length-1))return;
+      if(l.h>med*1.25&&s.length<120){
+        flush();
+        if(head&&blocks.length)blocks[blocks.length-1].s+=' '+s;else blocks.push({t:'h',s,pg});
+        head=true;prev=l;return;
+      }
+      const gap=prev?prev.y-l.y:0;
+      const np=head||(prev&&gap>prev.h*1.7)||(l.x-minX>med*.9&&end.test(para));
+      if(np)flush();
+      if(!para)ppg=pg;
+      if(/[a-zà-ú]-$/i.test(para)&&/^[a-zà-ú]/.test(s))para=para.slice(0,-1)+s;
+      else para+=(para?' ':'')+s;
+      head=false;prev=l;
+    });
+  }
+  flush();
+  let title='';try{title=(await pdf.getMetadata()).info.Title||''}catch(e){}
+  return{blocks,title,pages:pdf.numPages};
+}
+
+// EPUB → blocos de texto
+async function parseEPUB(buf){
+  const z=await JSZip.loadAsync(buf);
+  const rd=async p=>{const f=z.file(p);return f?f.async('string'):''};
+  const xml=s=>new DOMParser().parseFromString(s,'application/xml');
+  const cont=xml(await rd('META-INF/container.xml'));
+  const opfPath=cont.querySelector('rootfile').getAttribute('full-path');
+  const opf=xml(await rd(opfPath));
+  const base=opfPath.includes('/')?opfPath.replace(/[^/]*$/,''):'';
+  const man={};
+  opf.querySelectorAll('manifest > item').forEach(i=>man[i.getAttribute('id')]=i.getAttribute('href'));
+  const ids=[...opf.querySelectorAll('spine > itemref')].map(i=>i.getAttribute('idref'));
+  const t0=opf.getElementsByTagName('dc:title')[0];
+  const blocks=[];
+  for(let n=0;n<ids.length;n++){
+    msg('Lendo capítulo '+(n+1)+' de '+ids.length);
+    const href=man[ids[n]];if(!href)continue;
+    const path=decodeURIComponent(new URL(href,'http://x/'+base).pathname.slice(1));
+    const html=await rd(path);if(!html)continue;
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    doc.querySelectorAll('script,style').forEach(e=>e.remove());
+    const els=doc.body?doc.body.querySelectorAll('h1,h2,h3,h4,h5,h6,p,li,blockquote'):[];
+    let got=0;
+    els.forEach(el=>{
+      if(el.matches('blockquote,li')&&el.querySelector('p,li,h1,h2,h3,h4,h5,h6'))return;
+      const s=el.textContent.replace(/\s+/g,' ').trim();if(!s)return;
+      blocks.push({t:/^H[1-6]$/.test(el.tagName)?'h':'p',s});got++;
+    });
+    if(!got&&doc.body){
+      doc.body.textContent.split(/\n\s*\n/).forEach(s=>{s=s.replace(/\s+/g,' ').trim();if(s)blocks.push({t:'p',s})});
+    }
+  }
+  return{blocks,title:t0?t0.textContent.trim():''};
+}
+
+// Biblioteca (IndexedDB): guarda os livros e onde você parou
+let _db;
+function idb(){return _db||(_db=new Promise((ok,no)=>{
+  const r=indexedDB.open('leitor',1);
+  r.onupgradeneeded=()=>{r.result.createObjectStore('meta',{keyPath:'id'});r.result.createObjectStore('data',{keyPath:'id'})};
+  r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error);
+}))}
+async function dbDo(st,mode,fn){
+  const d=await idb();
+  return new Promise((ok,no)=>{const t=d.transaction(st,mode),q=fn(t.objectStore(st));t.oncomplete=()=>ok(q&&q.result);t.onerror=()=>no(t.error);t.onabort=()=>no(t.error)});
+}
+const dbPut=(s,v)=>dbDo(s,'readwrite',o=>o.put(v)).catch(()=>{});
+const dbGet=(s,k)=>dbDo(s,'readonly',o=>o.get(k)).catch(()=>null);
+const dbAll=s=>dbDo(s,'readonly',o=>o.getAll()).then(r=>r||[]).catch(()=>[]);
+const dbDel=(s,k)=>dbDo(s,'readwrite',o=>o.delete(k)).catch(()=>{});
+
+async function openMeta(m){
+  const d=await dbGet('data',m.id);if(!d)return false;
+  book={id:m.id,title:m.title,pages:m.pages||0,blocks:d.blocks};prep(book);render(m.pos);return true;
+}
+
+async function showLib(){
+  if(book&&reading){clearTimeout(tm);saveMeta()}
+  reading=false;$('text').style.display='none';
+  $('welcome').style.display='flex';document.body.classList.add('hide');scrollTo(0,0);
+  const L=$('lib');L.textContent='';
+  const all=(await dbAll('meta')).sort((a,b)=>b.upd-a.upd);
+  if(all.length){const h=document.createElement('div');h.className='lh';h.textContent='Continuar lendo';L.appendChild(h)}
+  all.forEach(m=>{
+    const c=document.createElement('div');c.className='card';
+    const b=document.createElement('button');b.className='ct';
+    const t=document.createElement('b');t.textContent=m.title;
+    const s=document.createElement('span'),e=m.est?'~':'';
+    s.textContent='pág. '+e+m.pg+' de '+e+m.tot+' · '+Math.round(m.pct*100)+'%';
+    const pb=document.createElement('div');pb.className='pb';
+    const bi=document.createElement('i');bi.style.width=Math.round(m.pct*100)+'%';pb.appendChild(bi);
+    b.append(t,s,pb);
+    b.onclick=async()=>{
+      if(book&&book.id===m.id){
+        $('welcome').style.display='none';$('text').style.display='block';
+        go(cur.i);reading=true;upd();return;
+      }
+      $('load').style.display='flex';msg('Abrindo…');
+      await openMeta(m);
+      $('load').style.display='none';
+    };
+    const x=document.createElement('button');x.className='x';x.textContent='Apagar';
+    let armed=false;
+    x.onclick=async()=>{
+      if(!armed){armed=true;x.textContent='Certeza?';setTimeout(()=>{armed=false;x.textContent='Apagar'},3000);return}
+      await dbDel('meta',m.id);await dbDel('data',m.id);
+      if(book&&book.id===m.id)book=null;
+      showLib();
+    };
+    c.append(b,x);L.appendChild(c);
+  });
+}
+
+// Ao abrir o site, continua o último livro lido
+(async()=>{
+  const all=(await dbAll('meta')).sort((a,b)=>b.upd-a.upd);
+  if(all[0])await openMeta(all[0]);else showLib();
+})();
+</script>
+
+<script>
+/* ===== NOVO: comportamento do campo de URL (JS puro, sem bibliotecas) ===== */
+(function () {
+  'use strict';
+
+  // Só domínio, sem "www." e sem caminho/parâmetros.
+  // URL inválida ou que não seja http/https: devolve o texto original sem alterar.
+  function simplify(text) {
+    try {
+      var u = new URL(text);
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return text;
+      return u.hostname.replace(/^www\./, '');
+    } catch (e) {
+      return text;
+    }
+  }
+
+  function init(el) {
+    // Setter/getter nativos de value, para escrever no campo sem disparar nossa lógica
+    var native = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+    var rawSet = function (v) { native.set.call(el, v); };
+    var rawGet = function () { return native.get.call(el); };
+
+    // A URL completa nunca se perde: fica nesta variável e em data-full-url
+    var full = el.getAttribute('data-full-url') || rawGet();
+    var focused = false;
+
+    function animate() {
+      el.classList.remove('swap');
+      void el.offsetWidth;                 // reinicia a animação
+      el.classList.add('swap');
+    }
+    el.addEventListener('animationend', function () { el.classList.remove('swap'); });
+
+    // Atualiza a URL completa guardada e o texto exibido
+    function setFull(url) {
+      full = url;
+      if (url && el.getAttribute('data-full-url') !== url) el.setAttribute('data-full-url', url);
+      rawSet(focused ? url : simplify(url));
+    }
+
+    // Se o valor for alterado por código (el.value = "..."), reaplica a versão simplificada
+    // quando o campo não está focado. Ler el.value sem foco devolve a URL completa.
+    Object.defineProperty(el, 'value', {
+      configurable: true,
+      get: function () { return focused ? rawGet() : full; },
+      set: function (v) { setFull(String(v)); }
+    });
+
+    // Se alguém mudar o atributo data-full-url por código, acompanha
+    new MutationObserver(function () {
+      var attr = el.getAttribute('data-full-url');
+      if (attr !== null && attr !== full) setFull(attr);
+    }).observe(el, { attributes: true, attributeFilter: ['data-full-url'] });
+
+    // FOCO: mostra a URL completa e seleciona tudo
+    var justFocused = false;
+    el.addEventListener('focus', function () {
+      focused = true;
+      rawSet(full);
+      animate();
+      el.select();
+      justFocused = true;
+      setTimeout(function () { el.select(); }, 0);   // garante a seleção em mobile/Safari
+    });
+    // evita que o soltar do mouse desfaça a seleção logo após clicar
+    el.addEventListener('mouseup', function (e) {
+      if (justFocused) { e.preventDefault(); justFocused = false; }
+    });
+
+    // PERDEU O FOCO: volta à versão simplificada (edição não confirmada é descartada)
+    el.addEventListener('blur', function () {
+      focused = false;
+      justFocused = false;
+      rawSet(simplify(full));
+      animate();
+      el.scrollLeft = 0;
+    });
+
+    // ENTER confirma; ESC cancela
+    el.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var typed = rawGet().trim();
+        if (typed) full = typed;
+        if (full) el.setAttribute('data-full-url', full);
+        el.blur();                                    // mostra a versão simplificada
+        if (full) el.dispatchEvent(new CustomEvent('urlchange', { detail: { url: full } }));
+      } else if (e.key === 'Escape') {
+        rawSet(full);
+        el.blur();
+      }
+    });
+
+    // COPIAR com o campo focado: sem seleção, copia a URL completa
+    // (com tudo selecionado o valor já é a URL completa)
+    el.addEventListener('copy', function (e) {
+      if (focused && full && el.selectionStart === el.selectionEnd) {
+        e.clipboardData.setData('text/plain', full);
+        e.preventDefault();
+      }
+    });
+
+    // Estado inicial (sem foco): versão simplificada
+    setFull(full);
+  }
+
+  document.querySelectorAll('input[data-helium-url]').forEach(init);
+})();
+
+/* ===== NOVO: ao confirmar (Enter) um link, tenta baixar o PDF/EPUB e abrir no leitor =====
+   Só funciona se o site do arquivo permitir acesso de outros sites (CORS).
+   Se não permitir, mostra um aviso. Para remover: apague este bloco. */
+(function () {
+  var field = document.getElementById('bookUrl');
+  if (!field) return;
+  field.addEventListener('urlchange', async function (e) {
+    var url;
+    try { url = new URL(e.detail.url); } catch (err) { return; }
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
+    var load = document.getElementById('load');
+    load.style.display = 'flex';
+    msg('Baixando…');
+    try {
+      var res = await fetch(url.href);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      var blob = await res.blob();
+      var name = decodeURIComponent(url.pathname.split('/').pop() || 'livro');
+      if (!/\.(pdf|epub)$/i.test(name)) {
+        name += (res.headers.get('content-type') || '').indexOf('epub') >= 0 ? '.epub' : '.pdf';
+      }
+      load.style.display = 'none';
+      await openFile(new File([blob], name, { type: blob.type }));
+    } catch (err) {
+      msg('Não consegui baixar este link (o site pode bloquear o acesso). Baixe o arquivo e use “Escolher livro”.');
+      await new Promise(function (r) { setTimeout(r, 4500); });
+      load.style.display = 'none';
+    }
+  });
+})();
+</script>
+</body>
+</html>
